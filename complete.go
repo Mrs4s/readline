@@ -2,8 +2,8 @@ package readline
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"github.com/mattn/go-runewidth"
 	"io"
 )
 
@@ -47,6 +47,7 @@ func newOpCompleter(w io.Writer, op *Operation, width int) *opCompleter {
 }
 
 func (o *opCompleter) doSelect() {
+
 	if len(o.candidate) == 1 {
 		o.op.buf.WriteRunes(o.candidate[0])
 		o.ExitCompleteMode(false)
@@ -69,14 +70,15 @@ func (o *opCompleter) OnComplete() bool {
 		return false
 	}
 	if o.IsInCompleteSelectMode() {
+
 		o.doSelect()
 		return true
 	}
 
 	buf := o.op.buf
 	rs := buf.Runes()
-
 	if o.IsInCompleteMode() && o.candidateSource != nil && runes.Equal(rs, o.candidateSource) {
+
 		o.EnterCompleteSelectMode()
 		o.doSelect()
 		return true
@@ -92,6 +94,7 @@ func (o *opCompleter) OnComplete() bool {
 
 	// only Aggregate candidates in non-complete mode
 	if !o.IsInCompleteMode() {
+
 		if len(newLines) == 1 {
 			buf.WriteRunes(newLines[0])
 			o.ExitCompleteMode(false)
@@ -189,7 +192,7 @@ func (o *opCompleter) CompleteRefresh() {
 	if !o.inCompleteMode {
 		return
 	}
-	lineCnt := o.op.buf.CursorLineCount()
+	//lineCnt := o.op.buf.CursorLineCount()
 	colWidth := 0
 	for _, c := range o.candidate {
 		w := runes.WidthAll(c)
@@ -198,7 +201,7 @@ func (o *opCompleter) CompleteRefresh() {
 		}
 	}
 	colWidth += o.candidateOff + 1
-	same := o.op.buf.RuneSlice(-o.candidateOff)
+	//same := o.op.buf.RuneSlice(-o.candidateOff)
 
 	// -1 to avoid reach the end of line
 	width := o.width - 1
@@ -209,35 +212,41 @@ func (o *opCompleter) CompleteRefresh() {
 
 	o.candidateColNum = colNum
 	buf := bufio.NewWriter(o.w)
-	buf.Write(bytes.Repeat([]byte("\n"), lineCnt))
+	//buf.Write(bytes.Repeat([]byte("\n"), lineCnt))
 
-	colIdx := 0
-	lines := 1
+	//colIdx := 0
+	//lines := 1
 	buf.WriteString("\033[J")
 	for idx, c := range o.candidate {
 		inSelect := idx == o.candidateChoise && o.IsInCompleteSelectMode()
 		if inSelect {
-			buf.WriteString("\033[30;47m")
+			//buf.WriteString("\033[30;47m")
+			disName := string(c)
+			if runewidth.StringWidth(disName) > 50 {
+				disName = disName[0:50] + ".."
+			}
+			//buf.WriteString(string(same))
+			buf.WriteString(disName)
+			fmt.Fprintf(buf, "\033[%dD", runewidth.StringWidth(disName))
+			//buf.Write(bytes.Repeat([]byte(" "), colWidth-runes.WidthAll(c)-runes.WidthAll(same)))
 		}
-		buf.WriteString(string(same))
-		buf.WriteString(string(c))
-		buf.Write(bytes.Repeat([]byte(" "), colWidth-runes.WidthAll(c)-runes.WidthAll(same)))
-
 		if inSelect {
-			buf.WriteString("\033[0m")
+			//buf.WriteString("\033[0m")
 		}
-
-		colIdx++
-		if colIdx == colNum {
-			buf.WriteString("\n")
-			lines++
-			colIdx = 0
-		}
+		/*
+			colIdx++
+			if colIdx == colNum {
+				buf.WriteString("\n")
+				lines++
+				colIdx = 0
+			}
+		*/
 	}
 
 	// move back
-	fmt.Fprintf(buf, "\033[%dA\r", lineCnt-1+lines)
-	fmt.Fprintf(buf, "\033[%dC", o.op.buf.idx+o.op.buf.PromptLen())
+	//fmt.Fprintf(buf, "\033[%dA\r", 1)
+	//fmt.Fprintf(buf, "\033[%dB\r", 1)
+	//fmt.Fprintf(buf, "\033[%dC", o.op.buf.idx+o.op.buf.PromptLen())
 	buf.Flush()
 }
 
